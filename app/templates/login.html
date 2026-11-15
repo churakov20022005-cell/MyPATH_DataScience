@@ -1,0 +1,4 @@
+{% extends 'base.html' %}
+{% block title %}Вход владельца{% endblock %}
+{% block crumb %}Вход{% endblock %}
+{% block content %}<div class="login-panel"><div class="eyebrow">МОЁ ПРОСТРАНСТВО</div><h1>С возвращением<span class="title-period">.</span></h1><p class="lead">Войдите, чтобы пополнять базу знаний.</p>{% if error %}<div class="form-errors" role="alert">{{ error }}</div>{% endif %}<form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="username" value="owner" autocomplete="username"><label>Пароль владельца<input type="password" name="password" autocomplete="current-password" required autofocus></label><button class="button">Войти <span>→</span></button></form><p class="helper">Читать материалы можно без входа.</p></div>{% endblock %}

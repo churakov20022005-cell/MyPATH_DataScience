@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero">
+  <div class="eyebrow"><span></span> МОЙ ПУТЬ В DATA SCIENCE</div>
+  <div class="hero-layout"><div><h1>Разбираюсь.<br>Записываю. <em>Расту.</em></h1><p class="lead">Моя база знаний о данных, коде и моделях.<br>Конспекты и вопросы, к которым хочется возвращаться.</p>
+  <div class="hero-actions"><a class="button" href="#directions">К направлениям <span>↘</span></a>{% if session.get('owner') %}<a class="secondary-link" href="{{ url_for('main.editor') }}">+ Добавить материал</a>{% endif %}</div></div>
+  <div class="code-art" aria-hidden="true"><div class="code-bar"><span>● ● ●</span><span>my_path.py</span></div><div class="code-body"><div><b>01</b><span class="code-muted"># По одной теме за раз</span></div><div><b>02</b><span><span class="code-purple">while</span> curious:</span></div><div><b>03</b><span>    learn<span class="code-blue">()</span></span></div><div><b>04</b><span>    practice<span class="code-blue">()</span></span></div><div><b>05</b><span>    notes.<span class="code-green">append</span>(insight)</span></div><div><b>06</b><span>    <span class="code-muted"># продолжение следует…</span></span></div></div><div class="code-foot"><span class="code-green">→</span> маленькие шаги, большой путь<span class="cursor">_</span></div></div></div>
+</section>
+<section id="directions">
+  <div class="section-heading"><div><div class="eyebrow muted">01 / КАРТА ЗНАНИЙ</div><h2>Три направления. Один путь.</h2></div><span class="section-meta">{{ total }} материалов в коллекции</span></div>
+  <div class="branch-grid">
+    {% for key, item in branches.items() %}
+    <a class="branch-card {{ key }}" href="{{ url_for('main.branch', branch=key) }}"><div class="card-top"><span class="branch-symbol">{{ item.symbol }}</span><span class="card-number">0{{ loop.index }}</span></div><div class="card-label">{{ item.label }}</div><h3>{{ item.title }}</h3><p>{{ item.description }}</p><div class="topics">{{ item.topics }}</div><div class="card-bottom"><span>{{ counts[key]['note'] }} консп. <span>·</span> {{ counts[key]['question'] }} вопр.</span><span class="circle-arrow">↗</span></div></a>
+    {% endfor %}
+  </div>
+</section>
+<section class="recent-section"><div class="section-heading"><div><div class="eyebrow muted">02 / В МОЕЙ КОЛЛЕКЦИИ</div><h2>Последние записи</h2></div><span class="section-meta">Знания под рукой</span></div>
+  {% if recent %}<div class="material-list">{% for material in recent %}{% include '_material_row.html' %}{% endfor %}</div>
+  {% else %}<div class="empty-state"><span class="empty-icon">↳</span><h3>Здесь начинается ваша коллекция</h3><p>Сохраните первый конспект или вопрос.<br>Каждая запись — ещё один шаг вперёд.</p><a class="secondary-link" href="{{ url_for('main.editor') if session.get('owner') else url_for('main.login') }}">Добавить первый материал →</a></div>{% endif %}
+</section>
+{% endblock %}

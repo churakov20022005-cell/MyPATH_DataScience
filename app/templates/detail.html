@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}{{ material.title }}{% endblock %}
+{% block crumb %}{{ branches[material.branch].title }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('main.branch', branch=material.branch) }}">← {{ branches[material.branch].title }}</a>
+<article class="reading"><div class="eyebrow"><span class="dot {{ material.branch }}"></span> {{ 'ВОПРОС ДЛЯ ПОВТОРЕНИЯ' if material.kind == 'question' else 'КОНСПЕКТ' }}</div><h1>{{ material.title }}</h1><p class="helper">Обновлено {{ material.updated_at.strftime('%d.%m.%Y') }}</p><div class="prose">{{ material.content }}</div>
+{% if material.kind == 'question' %}<details class="answer"><summary>Показать ответ <span>+</span></summary><div class="prose">{{ material.answer if material.answer else 'Ответ пока не добавлен. Можно вернуться к нему позже.' }}</div></details>{% endif %}
+{% if session.get('owner') %}<div class="detail-actions"><a class="button outline" href="{{ url_for('main.editor', material_id=material.id) }}">Редактировать</a><details class="delete-confirm"><summary>Удалить материал</summary><form method="post" action="{{ url_for('main.delete', material_id=material.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><p>Удалить эту запись навсегда?</p><button class="button danger">Да, удалить</button></form></details></div>{% endif %}</article>
+{% endblock %}
