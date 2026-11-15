@@ -1,0 +1,21 @@
+{% macro rich_editor(name, label, value, format) %}
+<section class="rich-editor" data-rich-editor data-field="{{ name }}" data-format="{{ format }}">
+  <div class="rich-label" id="{{ name }}-label">{{ label }}</div>
+  <div class="editor-toolbar" role="toolbar" aria-label="Форматирование: {{ label }}" hidden>
+    <select class="block-style" aria-label="Стиль текста"><option value="paragraph">Обычный текст</option><option value="heading-1">Заголовок 1</option><option value="heading-2">Заголовок 2</option><option value="heading-3">Заголовок 3</option></select>
+    {% for command, text, title in [('bold','B','Жирный (Ctrl+B)'),('italic','I','Курсив (Ctrl+I)'),('underline','U','Подчёркивание (Ctrl+U)'),('strike','S','Зачёркивание'),('highlight','▧','Выделить маркером'),('code','<>','Код в строке'),('bulletList','• ≡','Маркированный список'),('orderedList','1. ≡','Нумерованный список'),('taskList','☑','Список задач'),('blockquote','❞','Цитата / пометка'),('codeBlock','{ }','Блок кода'),('link','↗','Ссылка'),('table','▦','Вставить таблицу 3 × 3'),('image','▣','Загрузить изображение'),('horizontalRule','—','Разделитель'),('alignLeft','≡←','По левому краю'),('alignCenter','≡','По центру'),('alignRight','→≡','По правому краю'),('clear','Tx','Очистить форматирование'),('undo','↶','Отменить'),('redo','↷','Повторить')] %}
+    <button type="button" data-command="{{ command }}" title="{{ title }}" aria-label="{{ title }}" aria-pressed="false">{{ text }}</button>
+    {% endfor %}
+  </div>
+  <div class="editor-context" hidden>
+    <label class="code-options" hidden>Язык кода<select aria-label="Язык блока кода"><option value="plaintext">Текст</option><option value="sql">SQL</option><option value="python">Python</option><option value="javascript">JavaScript</option><option value="bash">Bash</option><option value="json">JSON</option></select></label>
+    <div class="table-options" hidden>{% for command, text in [('addRowAfter','+ Строка'),('addColumnAfter','+ Столбец'),('deleteRow','− Строка'),('deleteColumn','− Столбец'),('toggleHeaderRow','Шапка'),('deleteTable','Удалить таблицу')] %}<button type="button" data-command="{{ command }}">{{ text }}</button>{% endfor %}</div>
+  </div>
+  <div class="link-popover" hidden><label>Адрес ссылки<input type="text" inputmode="url" placeholder="https://…" aria-label="Адрес ссылки"></label><button type="button" data-link-save>Применить</button><button type="button" data-link-remove>Убрать ссылку</button><button type="button" data-link-cancel>Закрыть</button></div>
+  <textarea name="{{ name }}" id="{{ name }}-source" rows="{{ 12 if name == 'content' else 6 }}" maxlength="100000" aria-labelledby="{{ name }}-label">{{ value }}</textarea>
+  <div class="rich-surface" hidden></div>
+  <div class="editor-footer" hidden><span class="editor-hint">Можно вставить фото из буфера или перетащить файл</span><span class="editor-count" aria-live="off"></span></div>
+  <p class="upload-status" role="status" aria-live="polite"></p>
+  <input type="file" class="image-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+</section>
+{% endmacro %}

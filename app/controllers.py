@@ -1,9 +1,11 @@
 from functools import wraps
+from io import BytesIO
 
-from flask import Blueprint, abort, current_app, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from werkzeug.security import check_password_hash
 
 from . import models
+from .richtext import has_content, sanitize_html, validate_image, MAX_IMAGE_BYTES
 
 bp = Blueprint("main", __name__)
 
@@ -12,6 +14,8 @@ def owner_required(view):
     @wraps(view)
     def wrapped(*args, **kwargs):
         if not session.get("owner"):
+            if request.endpoint == 'main.upload_image':
+                return jsonify(error="Войдите как владелец, чтобы загрузить изображение."), 401
             return redirect(url_for("main.login"))
         return view(*args, **kwargs)
     return wrapped
@@ -82,10 +86,16 @@ def logout():
 @owner_required
 def editor(material_id=None):
     existing = find_material(material_id) if material_id else None
-    data = dict(existing) if existing else {"branch": request.args.get("branch", "sql"), "section": request.args.get("section", "yandex"), "kind": "note", "title": "", "content": "", "answer": ""}
+    data = dict(existing) if existing else {"branch": request.args.get("branch", "sql"), "section": request.args.get("section", "yandex"), "kind": "note", "title": "", "content": "", "answer": "", "content_format": "text"}
     errors = []
     if request.method == "POST":
         data = {key: request.form.get(key, "").strip() for key in ("branch", "section", "kind", "title", "content", "answer")}
+        data["content_format"] = request.form.get("content_format", "text")
+        if data["content_format"] not in ("text", "html"):
+            errors.append("Неизвестный формат материала.")
+        elif data["content_format"] == "html":
+            data["content"] = sanitize_html(data["content"])
+            data["answer"] = sanitize_html(data["answer"])
         if data["branch"] not in models.BRANCHES:
             errors.append("Выберите направление SQL, Python или ML.")
         if data["kind"] not in ("note", "question"):
@@ -96,16 +106,21 @@ def editor(material_id=None):
             errors.append("Заголовок должен содержать от 1 до 180 символов.")
         if not 1 <= len(data["content"]) <= 100000:
             errors.append("Основной текст должен содержать от 1 до 100 000 символов.")
+        elif data["content_format"] == "html" and not has_content(data["content"]):
+            errors.append("Добавьте текст, код или изображение в материал.")
         if len(data["answer"]) > 100000:
             errors.append("Ответ должен быть не длиннее 100 000 символов.")
         if data["kind"] == "note":
             data["answer"] = ""
         if not errors:
-            saved_id = models.save_material(data, material_id)
-            if saved_id is None:
-                abort(404)
-            flash("Материал сохранён.")
-            return redirect(url_for("main.detail", material_id=saved_id))
+            try:
+                saved_id = models.save_material(data, material_id)
+                if saved_id is None:
+                    abort(404)
+                flash("Материал сохранён.")
+                return redirect(url_for("main.detail", material_id=saved_id))
+            except ValueError as error:
+                errors.append(str(error))
     return render_template("editor.html", data=data, errors=errors, editing=existing is not None), 422 if errors else 200
 
 
@@ -116,3 +131,28 @@ def delete(material_id):
     models.delete_material(material_id)
     flash("Материал удалён.")
     return redirect(url_for("main.section", branch=material["branch"], section=material.get("section") or "uncategorized"))
+
+
+@bp.post('/images/upload')
+@owner_required
+def upload_image():
+    image = request.files.get('image')
+    if image is None:
+        return jsonify(error="Выберите изображение."), 400
+    try:
+        data = image.read(MAX_IMAGE_BYTES + 1)
+        mime = validate_image(data)
+        image_id = models.save_image(data, mime)
+    except ValueError as error:
+        return jsonify(error=str(error)), 400
+    return jsonify(url=url_for('main.image', image_id=image_id)), 201
+
+
+@bp.get('/images/<uuid:image_id>')
+def image(image_id):
+    stored = models.get_image(image_id)
+    if stored is None:
+        abort(404)
+    response = send_file(BytesIO(bytes(stored['data'])), mimetype=stored['mime_type'], max_age=0)
+    response.headers['Content-Security-Policy'] = "default-src 'none'; sandbox"
+    return response

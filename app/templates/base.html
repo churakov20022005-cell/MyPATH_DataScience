@@ -7,6 +7,8 @@
   <title>{% block title %}Моя база знаний{% endblock %} · MyPATH</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='editor.css') }}">
+  {% block head %}{% endblock %}
 </head>
 <body>
   <div class="shell">

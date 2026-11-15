@@ -1,8 +1,10 @@
 from pathlib import Path
+from uuid import uuid4
 
 import psycopg
 from psycopg.rows import dict_row
 from flask import current_app, g
+from .richtext import image_ids
 
 BRANCHES = {
     "sql": {"title": "SQL", "symbol": "{ }", "description": "Запросы, связи и закономерности в данных.", "topics": "JOIN · GROUP BY · Оконные функции", "label": "Работа с данными"},
@@ -78,13 +80,39 @@ def get_material(material_id):
 
 def save_material(data, material_id=None):
     db = get_db()
-    params = (data["branch"], data["kind"], data["title"], data["content"], data["answer"], data.get("section", ""))
+    params = (data["branch"], data["kind"], data["title"], data["content"], data["answer"], data.get("section", ""), data.get("content_format", "text"))
     with db.transaction():
         if material_id is None:
-            row = db.execute("INSERT INTO materials (branch, kind, title, content, answer, section) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id", params).fetchone()
+            row = db.execute("INSERT INTO materials (branch, kind, title, content, answer, section, content_format) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id", params).fetchone()
         else:
-            row = db.execute("UPDATE materials SET branch=%s, kind=%s, title=%s, content=%s, answer=%s, section=%s, updated_at=now() WHERE id=%s RETURNING id", params + (material_id,)).fetchone()
+            row = db.execute("UPDATE materials SET branch=%s, kind=%s, title=%s, content=%s, answer=%s, section=%s, content_format=%s, updated_at=now() WHERE id=%s RETURNING id", params + (material_id,)).fetchone()
+        if row and data.get("content_format") == "html":
+            refs = sorted(image_ids(data["content"]) | image_ids(data["answer"]))
+            if refs:
+                existing = db.execute("SELECT id FROM images WHERE id = ANY(%s::uuid[])", (refs,)).fetchall()
+                if len(existing) != len(refs):
+                    raise ValueError("Одно из изображений недоступно. Загрузите его заново.")
+            db.execute("DELETE FROM material_images WHERE material_id=%s", (row["id"],))
+            for ref in refs:
+                db.execute("INSERT INTO material_images (material_id,image_id) VALUES (%s,%s)", (row["id"], ref))
         return row["id"] if row else None
+
+
+def save_image(data, mime_type):
+    db = get_db()
+    image_id = uuid4()
+    with db.transaction():
+        db.execute("SELECT pg_advisory_xact_lock(88633210)")
+        db.execute("DELETE FROM images WHERE created_at < now() - interval '24 hours' AND NOT EXISTS (SELECT 1 FROM material_images WHERE image_id=images.id)")
+        used = db.execute("SELECT coalesce(sum(octet_length(data)),0) AS total FROM images").fetchone()["total"]
+        if used + len(data) > 100 * 1024 * 1024:
+            raise ValueError("Место для изображений заполнено (100 МБ).")
+        db.execute("INSERT INTO images (id,mime_type,data) VALUES (%s,%s,%s)", (image_id, mime_type, data))
+    return str(image_id)
+
+
+def get_image(image_id):
+    return get_db().execute("SELECT mime_type,data FROM images WHERE id=%s", (image_id,)).fetchone()
 
 
 def delete_material(material_id):

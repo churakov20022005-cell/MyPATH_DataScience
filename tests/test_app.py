@@ -188,6 +188,7 @@ class PostgresTests(unittest.TestCase):
                     legacy = models.get_material(legacy_id)
                     self.assertEqual(legacy["section"], "")
                     self.assertEqual(legacy["content"], "Keep this text")
+                    self.assertEqual(legacy["content_format"], "text")
                     self.assertEqual(models.section_counts("sql")[""], 1)
                     self.assertEqual(len(models.list_materials("sql", section="")), 1)
                     legacy["section"] = "books"
@@ -196,6 +197,19 @@ class PostgresTests(unittest.TestCase):
                     self.assertEqual(len(models.list_materials("sql", section="books")), 1)
                     self.assertEqual(models.list_materials("sql", section="tasks"), [])
                     models.delete_material(legacy_id)
+                    # Real image bytes and links persist and can be reused in rich notes.
+                    from io import BytesIO
+                    from PIL import Image
+                    stream = BytesIO()
+                    Image.new('RGB', (2, 2), 'white').save(stream, format='PNG')
+                    image_id = models.save_image(stream.getvalue(), 'image/png')
+                    self.assertEqual(bytes(models.get_image(image_id)['data']), stream.getvalue())
+                    rich = {'branch': 'sql', 'section': 'tasks', 'kind': 'note', 'title': 'Rich', 'content': f'<p><strong>Rich</strong></p><img src="/images/{image_id}">', 'answer': '', 'content_format': 'html'}
+                    rich_id = models.save_material(rich)
+                    self.assertEqual(models.get_material(rich_id)['content_format'], 'html')
+                    self.assertEqual(models.get_db().execute('SELECT count(*) AS total FROM material_images WHERE material_id=%s', (rich_id,)).fetchone()['total'], 1)
+                    models.delete_material(rich_id)
+                    self.assertEqual(models.get_db().execute('SELECT count(*) AS total FROM material_images WHERE material_id=%s', (rich_id,)).fetchone()['total'], 0)
                     counts, recent = models.overview()
                     self.assertEqual(recent, [])
                     item = {"branch": "sql", "section": "tasks", "kind": "question", "title": "Оконные функции", "content": "row_number()\nSELECT '100%';", "answer": "Нумерация"}

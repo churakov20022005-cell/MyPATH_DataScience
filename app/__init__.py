@@ -19,7 +19,7 @@ def create_app(test_config=None):
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "false").lower() == "true",
         PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
-        MAX_CONTENT_LENGTH=512 * 1024,
+        MAX_CONTENT_LENGTH=6 * 1024 * 1024,
     )
     if test_config:
         app.config.update(test_config)
@@ -29,6 +29,9 @@ def create_app(test_config=None):
 
     app.register_blueprint(bp)
     app.teardown_appcontext(models.close_db)
+
+    from .richtext import render_content
+    app.jinja_env.filters["render_content"] = render_content
 
     @app.before_request
     def verify_csrf():
