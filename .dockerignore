@@ -1,5 +1,11 @@
 .git
 .env
+.env.*
+.neon
+.codex
+.agents
+node_modules
+.vscode
 .venv
 __pycache__
 .owner-password.txt

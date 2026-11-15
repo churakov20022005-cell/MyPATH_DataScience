@@ -91,6 +91,37 @@ docker compose -f compose.yaml -f compose.local.yaml up -d db
 
 ## Пароль и настройки
 
+### Подключение к Neon
+
+Для облачной базы задайте в локальном `.env` переменную `DATABASE_URL` строкой
+подключения Neon, сохраняя параметры SSL из Neon Console. Для приложения можно
+использовать pooled URL; прямое подключение при наличии хранится отдельно
+в `DATABASE_URL_UNPOOLED`. Сайт использует `DATABASE_URL`, а создание таблиц
+в `compose.neon.yaml` — прямое подключение `DATABASE_URL_UNPOOLED`.
+Не добавляйте реальные строки подключения в README, исходники или Git.
+
+Запуск приложения с Neon вместо локальной PostgreSQL:
+
+```powershell
+docker compose -f compose.neon.yaml up -d --build web
+```
+
+Команда заменяет контейнер сайта, но не удаляет локальную базу или её том.
+Существующие локальные записи автоматически в Neon не переносятся.
+Для возвращения к локальной базе используйте `docker compose up -d web`:
+основной Compose задаёт локальный `DATABASE_URL` отдельно.
+
+Проверка на Neon (временные схемы требуют прямого подключения):
+
+```powershell
+docker compose -f compose.neon.yaml exec web sh -c 'TEST_DATABASE_URL="$DATABASE_URL_UNPOOLED" python -m unittest discover -v'
+```
+
+На Render задайте `DATABASE_URL`, `SECRET_KEY`, `ADMIN_PASSWORD_HASH` и
+`COOKIE_SECURE=true` через настройки Environment. Локальный `.env` не загружается в Git.
+
+### Изменение пароля
+
 Для ручной настройки скопируйте `.env.example` в `.env`.
 Сгенерируйте `SECRET_KEY` и хеш пароля командами из комментариев в примере.
 Хеш в `.env` заключите в одинарные кавычки: это сохраняет символы `$`

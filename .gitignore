@@ -7,3 +7,5 @@ __pycache__/
 .owner-password.txt
 .vscode/
 .pytest_cache/
+.neon
+node_modules/
