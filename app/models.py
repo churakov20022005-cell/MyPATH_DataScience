@@ -10,6 +10,12 @@ BRANCHES = {
     "ml": {"title": "Machine Learning", "symbol": "✳", "description": "Модели, которые учатся находить ответы.", "topics": "Признаки · Обучение · Метрики", "label": "Машинное обучение"},
 }
 
+SECTIONS = {
+    "yandex": {"title": "Конспект ЯндексПрактикум", "description": "Теория, заметки и важные выводы из курса.", "symbol": "01"},
+    "books": {"title": "Конспект по книгам", "description": "Идеи и примеры из прочитанных книг.", "symbol": "02"},
+    "tasks": {"title": "Решение задач", "description": "Условия, ход решения и разбор ошибок.", "symbol": "03"},
+}
+
 
 def get_db():
     if "db" not in g:
@@ -30,6 +36,8 @@ def init_db():
     db = get_db()
     with db.transaction():
         db.execute(Path(__file__).with_name("schema.sql").read_text(encoding="utf-8"))
+        for migration in sorted(Path(__file__).with_name("migrations").glob("*.sql")):
+            db.execute(migration.read_text(encoding="utf-8"))
 
 
 def overview():
@@ -41,8 +49,19 @@ def overview():
     return counts, recent
 
 
-def list_materials(branch, kind="", query=""):
+def section_counts(branch):
+    counts = {key: 0 for key in (*SECTIONS, "")}
+    rows = get_db().execute("SELECT section, count(*) AS total FROM materials WHERE branch=%s GROUP BY section", (branch,))
+    for row in rows:
+        counts[row["section"]] = row["total"]
+    return counts
+
+
+def list_materials(branch, kind="", query="", section=None):
     conditions, params = ["branch = %s"], [branch]
+    if section is not None:
+        conditions.append("section = %s")
+        params.append(section)
     if kind:
         conditions.append("kind = %s")
         params.append(kind)
@@ -59,12 +78,12 @@ def get_material(material_id):
 
 def save_material(data, material_id=None):
     db = get_db()
-    params = (data["branch"], data["kind"], data["title"], data["content"], data["answer"])
+    params = (data["branch"], data["kind"], data["title"], data["content"], data["answer"], data.get("section", ""))
     with db.transaction():
         if material_id is None:
-            row = db.execute("INSERT INTO materials (branch, kind, title, content, answer) VALUES (%s, %s, %s, %s, %s) RETURNING id", params).fetchone()
+            row = db.execute("INSERT INTO materials (branch, kind, title, content, answer, section) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id", params).fetchone()
         else:
-            row = db.execute("UPDATE materials SET branch=%s, kind=%s, title=%s, content=%s, answer=%s, updated_at=now() WHERE id=%s RETURNING id", params + (material_id,)).fetchone()
+            row = db.execute("UPDATE materials SET branch=%s, kind=%s, title=%s, content=%s, answer=%s, section=%s, updated_at=now() WHERE id=%s RETURNING id", params + (material_id,)).fetchone()
         return row["id"] if row else None
 
 

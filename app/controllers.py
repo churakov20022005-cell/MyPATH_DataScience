@@ -34,10 +34,21 @@ def home():
 def branch(branch):
     if branch not in models.BRANCHES:
         abort(404)
+    if request.args.get("kind") or request.args.get("q"):
+        return redirect(url_for("main.section", branch=branch, section="all", kind=request.args.get("kind", ""), q=request.args.get("q", "")))
+    return render_template("branch.html", branch=branch, info=models.BRANCHES[branch], counts=models.section_counts(branch))
+
+
+@bp.get("/branch/<branch>/section/<section>")
+def section(branch, section):
+    if branch not in models.BRANCHES or section not in (*models.SECTIONS, "all", "uncategorized"):
+        abort(404)
+    selected = None if section == "all" else "" if section == "uncategorized" else section
+    title = "Все материалы" if section == "all" else "Без раздела" if section == "uncategorized" else models.SECTIONS[section]["title"]
     kind, query = request.args.get("kind", ""), request.args.get("q", "").strip()
     if kind not in ("", "note", "question") or len(query) > 200:
         abort(400)
-    return render_template("branch.html", branch=branch, info=models.BRANCHES[branch], kind=kind, query=query, materials=models.list_materials(branch, kind, query))
+    return render_template("section.html", branch=branch, info=models.BRANCHES[branch], section=section, section_title=title, kind=kind, query=query, materials=models.list_materials(branch, kind, query, selected))
 
 
 @bp.get("/materials/<int:material_id>")
@@ -71,14 +82,16 @@ def logout():
 @owner_required
 def editor(material_id=None):
     existing = find_material(material_id) if material_id else None
-    data = dict(existing) if existing else {"branch": request.args.get("branch", "sql"), "kind": "note", "title": "", "content": "", "answer": ""}
+    data = dict(existing) if existing else {"branch": request.args.get("branch", "sql"), "section": request.args.get("section", "yandex"), "kind": "note", "title": "", "content": "", "answer": ""}
     errors = []
     if request.method == "POST":
-        data = {key: request.form.get(key, "").strip() for key in ("branch", "kind", "title", "content", "answer")}
+        data = {key: request.form.get(key, "").strip() for key in ("branch", "section", "kind", "title", "content", "answer")}
         if data["branch"] not in models.BRANCHES:
             errors.append("Выберите направление SQL, Python или ML.")
         if data["kind"] not in ("note", "question"):
             errors.append("Выберите тип материала.")
+        if data["section"] not in models.SECTIONS and not (existing and data["section"] == ""):
+            errors.append("Выберите подраздел: ЯндексПрактикум, книги или решение задач.")
         if not 1 <= len(data["title"]) <= 180:
             errors.append("Заголовок должен содержать от 1 до 180 символов.")
         if not 1 <= len(data["content"]) <= 100000:
@@ -102,4 +115,4 @@ def delete(material_id):
     material = find_material(material_id)
     models.delete_material(material_id)
     flash("Материал удалён.")
-    return redirect(url_for("main.branch", branch=material["branch"]))
+    return redirect(url_for("main.section", branch=material["branch"], section=material.get("section") or "uncategorized"))

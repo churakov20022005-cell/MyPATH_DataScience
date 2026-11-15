@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}{{ section_title }} · {{ info.title }}{% endblock %}
+{% block crumb %}{{ info.title }} / {{ section_title }}{% endblock %}
+{% block content %}
+<a class="back-link" href="{{ url_for('main.branch', branch=branch) }}">← {{ info.title }} / Подразделы</a>
+<div class="page-intro compact">
+  <div class="eyebrow">{{ info.title }} / МОЯ КОЛЛЕКЦИЯ</div>
+  <div class="title-line"><h1>{{ section_title }}<span class="title-period">.</span></h1>{% if session.get('owner') %}<a class="button" href="{{ url_for('main.editor', branch=branch, section=section if section in sections else 'yandex') }}">+ Добавить материал</a>{% endif %}</div>
+  <p class="lead">{{ sections[section].description if section in sections else 'Мои конспекты, вопросы и открытия по теме.' }}</p>
+</div>
+<nav class="section-switcher" aria-label="Подразделы {{ info.title }}">{% for key, item in sections.items() %}<a class="{{ 'selected' if section == key }}" href="{{ url_for('main.section', branch=branch, section=key) }}" {% if section == key %}aria-current="page"{% endif %}>{{ item.title }}</a>{% endfor %}</nav>
+<form class="filters" method="get"><div class="tabs"><button class="tab {{ 'selected' if not kind }}" name="kind" value="">Все материалы</button><button class="tab {{ 'selected' if kind == 'note' }}" name="kind" value="note">Конспекты</button><button class="tab {{ 'selected' if kind == 'question' }}" name="kind" value="question">Вопросы</button></div><div class="search"><label class="sr-only" for="query">Поиск по материалам</label><input id="query" name="q" value="{{ query }}" placeholder="Найти в этом подразделе…" maxlength="200" type="search"><button aria-label="Найти" name="kind" value="{{ kind }}">→</button></div></form>
+{% if query %}<p class="result-label">Результаты поиска «{{ query }}» · <a href="{{ url_for('main.section', branch=branch, section=section, kind=kind) }}">Сбросить</a></p>{% endif %}
+{% if materials %}<div class="material-list">{% for material in materials %}{% include '_material_row.html' %}{% endfor %}</div><p class="helper">Показано {{ materials|length }} материалов{% if materials|length == 200 %}. Уточните поиск, чтобы найти более ранние записи{% endif %}.</p>
+{% else %}<div class="empty-state"><span class="empty-icon">{{ '?' if kind == 'question' else '≡' }}</span><h3>{{ 'Ничего не найдено' if query else 'Пока чистый лист' }}</h3><p>{{ 'Попробуйте другое слово или сбросьте фильтр.' if query else 'Здесь будут ваши записи. Начните с первой мысли, примера или задачи.' }}</p>{% if session.get('owner') %}<a class="secondary-link" href="{{ url_for('main.editor', branch=branch, section=section if section in sections else 'yandex') }}">+ Добавить материал</a>{% endif %}</div>{% endif %}
+{% endblock %}

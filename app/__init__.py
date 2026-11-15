@@ -32,8 +32,11 @@ def create_app(test_config=None):
 
     @app.before_request
     def verify_csrf():
+        # Styles and scripts must remain available on configuration error pages.
+        if request.endpoint == "static":
+            return None
         if not app.secret_key or app.secret_key.startswith("replace-"):
-            return render_template("error.html", title="Нужна настройка", message="Задайте случайный SECRET_KEY в файле .env и перезапустите приложение."), 503
+            return render_template("error.html", title="Нужна настройка", message="Задайте SECRET_KEY в переменных окружения сервера (на Render: Environment) или в локальном .env, затем перезапустите приложение."), 503
         if request.method == "POST":
             expected = session.get("csrf_token", "")
             provided = request.form.get("csrf_token", "")
@@ -44,7 +47,7 @@ def create_app(test_config=None):
     def template_context():
         if app.secret_key and "csrf_token" not in session:
             session["csrf_token"] = secrets.token_hex(32)
-        return {"csrf_token": session.get("csrf_token", ""), "branches": models.BRANCHES}
+        return {"csrf_token": session.get("csrf_token", ""), "branches": models.BRANCHES, "sections": models.SECTIONS}
 
     @app.after_request
     def security_headers(response):

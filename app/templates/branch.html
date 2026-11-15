@@ -2,9 +2,20 @@
 {% block title %}{{ info.title }}{% endblock %}
 {% block crumb %}{{ info.title }}{% endblock %}
 {% block content %}
-<div class="page-intro"><div class="eyebrow"><span class="dot {{ branch }}"></span> НАПРАВЛЕНИЕ ОБУЧЕНИЯ</div><div class="title-line"><h1>{{ info.title }}<span class="title-period">.</span></h1>{% if session.get('owner') %}<a class="button" href="{{ url_for('main.editor', branch=branch) }}">+ Добавить материал</a>{% endif %}</div><p class="lead">{{ info.description }}<br>Мои конспекты, вопросы и открытия по теме.</p></div>
-<form class="filters" method="get"><div class="tabs"><button class="tab {{ 'selected' if not kind }}" name="kind" value="">Все материалы</button><button class="tab {{ 'selected' if kind == 'note' }}" name="kind" value="note">Конспекты</button><button class="tab {{ 'selected' if kind == 'question' }}" name="kind" value="question">Вопросы</button></div><div class="search"><label class="sr-only" for="query">Поиск по материалам</label><input id="query" name="q" value="{{ query }}" placeholder="Найти в этом направлении…" maxlength="200" type="search"><button aria-label="Найти" name="kind" value="{{ kind }}">→</button></div></form>
-{% if query %}<p class="result-label">Результаты поиска «{{ query }}» · <a href="{{ url_for('main.branch', branch=branch, kind=kind) }}">Сбросить</a></p>{% endif %}
-{% if materials %}<div class="material-list">{% for material in materials %}{% include '_material_row.html' %}{% endfor %}</div><p class="helper">Показано {{ materials|length }} материалов{% if materials|length == 200 %}. Уточните поиск, чтобы найти более ранние записи{% endif %}.</p>
-{% else %}<div class="empty-state"><span class="empty-icon">{{ '?' if kind == 'question' else '≡' }}</span><h3>{{ 'Ничего не найдено' if query else 'Пока чистый лист' }}</h3><p>{{ 'Попробуйте другое слово или сбросьте фильтр.' if query else 'Добавляйте сюда то, что хотите понять и запомнить.' }}</p>{% if session.get('owner') %}<a class="secondary-link" href="{{ url_for('main.editor', branch=branch) }}">+ Добавить материал</a>{% endif %}</div>{% endif %}
+<div class="page-intro">
+  <div class="eyebrow">МОЯ БАЗА ЗНАНИЙ / {{ 'ML' if branch == 'ml' else info.title }}</div>
+  <div class="title-line"><h1>{{ info.title }}<span class="title-period">.</span></h1>{% if session.get('owner') %}<a class="button" href="{{ url_for('main.editor', branch=branch) }}">+ Добавить материал</a>{% endif %}</div>
+  <p class="lead">{{ info.description }}<br>Выберите, с чем хотите поработать сегодня.</p>
+</div>
+<div class="section-heading"><div><div class="eyebrow muted">ТЕОРИЯ И ПРАКТИКА</div><h2>Откуда начинаем?</h2></div><span class="section-meta">Три раздела для знаний</span></div>
+<div class="module-grid">
+  {% for key, item in sections.items() %}
+  <a class="module-card" href="{{ url_for('main.section', branch=branch, section=key) }}">
+    <div class="module-top"><span class="module-number">{{ item.symbol }}</span><span class="module-arrow">↗</span></div>
+    <h2>{{ item.title }}</h2><p>{{ item.description }}</p><div class="module-bottom">{{ counts[key] }} материалов <span>Открыть →</span></div>
+  </a>
+  {% endfor %}
+</div>
+<div class="collection-links"><a href="{{ url_for('main.section', branch=branch, section='all') }}">Все материалы <span>{{ counts.values()|sum }}</span> ↗</a>{% if counts[''] %}<a href="{{ url_for('main.section', branch=branch, section='uncategorized') }}">Без раздела <span>{{ counts[''] }}</span> ↗</a>{% endif %}</div>
+{% if counts[''] and session.get('owner') %}<p class="helper">Старые записи — в «Без раздела». Выберите подраздел при редактировании записи.</p>{% endif %}
 {% endblock %}
